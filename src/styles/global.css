@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+/* Nightshift Vinyl palette — generates bg-*, text-*, border-*, etc. */
+@theme {
+  --color-ink: #0f0e0c;
+  --color-coal: #1c1b19;
+  --color-smoke: #3b3833;
+  --color-cream: #e8e2d9;
+  --color-rust: #c9722b;
+  --color-amber: #e6994b;
+}
