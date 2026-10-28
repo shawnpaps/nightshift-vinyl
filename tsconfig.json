@@ -5,9 +5,12 @@
     "**/*"
   ],
   "exclude": [
-    "dist"
+    "dist",
+    ".vercel",
+    "scripts/preview-vercel.mjs"
   ],
   "compilerOptions": {
+    "plugins": [{ "name": "@shopify/hydrogen/ts-plugin" }],
     "jsx": "react-jsx",
     "jsxImportSource": "react"
   }

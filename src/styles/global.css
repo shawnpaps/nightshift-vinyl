@@ -9,3 +9,18 @@
   --color-rust: #c9722b;
   --color-amber: #e6994b;
 }
+
+html { scrollbar-gutter: stable; }
+body:has(dialog#cart-drawer[open]) { overflow: hidden; }
+dialog#cart-drawer {
+  position: fixed; inset-block: 0; right: 0; left: auto; margin: 0;
+  width: 100%; max-width: 32rem; height: 100dvh; max-height: none; border: 0; padding: 0;
+  background: var(--color-ink); color: var(--color-cream);
+  transform: translateX(100%);
+  transition: transform 250ms cubic-bezier(.22,1,.36,1), overlay 250ms allow-discrete, display 250ms allow-discrete;
+}
+dialog#cart-drawer[open] { transform: translateX(0); }
+dialog#cart-drawer::backdrop { background: rgb(0 0 0 / 0); transition: background-color 250ms, overlay 250ms allow-discrete, display 250ms allow-discrete; }
+dialog#cart-drawer[open]::backdrop { background: rgb(0 0 0 / .6); }
+@starting-style { dialog#cart-drawer[open] { transform: translateX(100%); } dialog#cart-drawer[open]::backdrop { background: rgb(0 0 0 / 0); } }
+@media (prefers-reduced-motion: reduce) { dialog#cart-drawer, dialog#cart-drawer::backdrop { transition: none; } }

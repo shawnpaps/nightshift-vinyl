@@ -1,0 +1,17 @@
+---
+import { gql, renderShopifyScriptTags, type ShopifyScriptsI18n, type ShopifyScriptsShop } from '@shopify/hydrogen';
+import { isDemoStore, shopifyConfig } from '../lib/shopify.server';
+// Shopify scripts need the numeric shop ID even when customer accounts are disabled.
+const { data, errors } = await Astro.locals.storefront.graphql(gql(`query RuntimeShop { shop { id } localization { country { currency { isoCode } } } }`));
+if (errors || !data) throw new Error('Unable to load Shopify runtime configuration.');
+const shop: ShopifyScriptsShop = { shopId: shopifyConfig.shopId || data.shop.id, storefrontId: shopifyConfig.storefrontId, myshopifyDomain: shopifyConfig.storeDomain };
+const i18n: ShopifyScriptsI18n = { country: 'US', language: 'EN', currency: data.localization.country.currency.isoCode };
+const tags = renderShopifyScriptTags({ shop, i18n, consent: { mode:'default-banner' }, shopifyAnalytics: !isDemoStore, analytics:{channel:shopifyConfig.storefrontId === '0' ? 'headless' : 'hydrogen'} });
+---
+<Fragment set:html={tags} />
+<script>
+  import { initializeShopifyScripts } from '@shopify/hydrogen';
+  import { routeTemplates } from '../lib/routes';
+  initializeShopifyScripts({ routes: routeTemplates, consent:{mode:'default-banner'}, navigate:(url) => location.assign(url) });
+  window.dispatchEvent(new Event('nightshift:shopify-ready'));
+</script>

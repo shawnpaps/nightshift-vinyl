@@ -1,0 +1,7 @@
+---
+import StoreLayout from '../layouts/StoreLayout.astro';
+import Browse from '../components/Browse.astro';
+import { loadBrowse } from '../lib/browse.server';
+const data = (await loadBrowse(Astro.locals.storefront, Astro.url))!;
+---
+<StoreLayout title={`${data.title} · Nightshift Vinyl`}><h1 class="mb-6 text-4xl font-bold">Search</h1><form method="get" action="/search" class="mb-10 flex gap-3"><input aria-label="Search products" class="min-w-0 flex-1 rounded border border-smoke bg-coal p-3" type="search" name="q" value={Astro.url.searchParams.get('q') ?? ''} /><button class="bg-amber px-6 text-ink" type="submit">Search</button></form><Browse data={data} /></StoreLayout>

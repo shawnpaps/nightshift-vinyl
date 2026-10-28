@@ -1,0 +1,99 @@
+---
+import { parseCollectionParams, serializeCollectionParams, isFilterInputActive, getFilterRemovalUrl, getSortByValue, formatMoney } from '@shopify/hydrogen';
+import type { ProductFilter } from '@shopify/hydrogen';
+import type { BrowseData } from '../lib/browse.server';
+import ProductCard from './ProductCard.astro';
+import AnalyticsView from './AnalyticsView.astro';
+interface Props { data: BrowseData }
+const { data } = Astro.props;
+const state = parseCollectionParams(Astro.url.searchParams);
+const symbol = formatMoney({ amount: '0', currencyCode: data.currencyCode }, { locale: 'en-US' }).currencyNarrowSymbol;
+const price = state.filters.find((f) => f.price)?.price;
+const next = new URL(Astro.url); next.searchParams.set('after', data.pageInfo.endCursor ?? '');
+const clear = new URL(Astro.url); for (const key of [...clear.searchParams.keys()]) if (key.startsWith('filter.') || key === 'after' || key === 'before') clear.searchParams.delete(key);
+---
+<div data-browse data-handle={data.handle} data-search={data.dataSearch} class="grid gap-10 md:grid-cols-[220px_1fr]">
+  <form method="get" action={Astro.url.pathname} data-browse-form class="space-y-6">
+    {[...Astro.url.searchParams].filter(([key]) => !key.startsWith('filter.') && !['sort_by', 'after', 'before'].includes(key)).map(([key,value]) => <input type="hidden" name={key} value={value} />)}
+    <label class="block">Sort by<select name="sort_by" class="mt-2 w-full rounded border border-smoke bg-coal p-2">
+      <option value="">Featured</option>
+      {[false,true].map((reverse) => <option value={getSortByValue('PRICE', reverse)} selected={state.sortKey === 'PRICE' && state.reverse === reverse}>Price: {reverse ? 'high to low' : 'low to high'}</option>)}
+    </select></label>
+    {data.availableFilters.map((filter) => <fieldset><legend class="mb-3 font-bold">{filter.label}</legend>
+      {filter.type === 'PRICE_RANGE' ? <div class="flex gap-2">{['min','max'].map((bound) => <label class="flex min-w-0 items-center gap-1 rounded border border-smoke bg-coal px-2"><span aria-hidden="true">{symbol}</span><input class="w-full min-w-0 py-2" type="number" min="0" step="any" aria-label={`${bound === 'min' ? 'Minimum' : 'Maximum'} price in ${data.currencyCode}`} name={`filter.v.price.${bound === 'min' ? 'gte' : 'lte'}`} value={bound === 'min' ? price?.min : price?.max} placeholder={bound === 'min' ? 'Min' : 'Max'} /></label>)}</div> : filter.values.map((value) => {
+        const [entry] = [...serializeCollectionParams({ filters: [JSON.parse(value.input) as ProductFilter], sortKey: undefined, reverse: false })];
+        return entry && <label class="mb-2 flex items-start gap-2"><input type="checkbox" name={entry[0]} value={entry[1]} data-filter-input={value.input} checked={isFilterInputActive(state.filters,value.input)} />{value.label} ({value.count})</label>;
+      })}
+    </fieldset>)}
+    <noscript><button class="border border-amber px-4 py-2" type="submit">Apply filters</button></noscript>
+  </form>
+  <div data-browse-results>
+    {data.handle.startsWith('search:') ? data.handle !== 'search:' && <AnalyticsView event="search_viewed" payload={{searchTerm:data.handle.slice(7),searchResults:data.products.map((p) => ({id:p.id}))}} /> : <AnalyticsView event="collection_viewed" payload={{collection:{id:data.collectionId,handle:data.handle}}} />}
+    <div class="mb-6 flex flex-wrap gap-3">{state.filters.map((filter) => <a class="rounded border border-smoke px-3 py-1 text-sm" data-filter-link href={getFilterRemovalUrl(Astro.url.searchParams,filter)}>Remove {filter.price ? 'price range' : data.availableFilters.flatMap((f) => f.values).find((v) => isFilterInputActive([filter],v.input))?.label ?? 'filter'} ×</a>)}{state.filters.length > 0 && <a data-filter-link href={clear.pathname + clear.search}>Clear filters</a>}</div>
+    <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">{data.products.map((product) => <ProductCard product={product} />)}</div>
+    {!data.products.length && <p>No products found. Try another search or clear your filters.</p>}
+    {data.pageInfo.hasNextPage && <a class="mt-8 inline-block border border-smoke px-6 py-3" href={next.pathname + next.search}>Next page →</a>}
+  </div>
+  <p role="status" data-browse-status class="md:col-span-2"></p>
+</div>
+<script>
+  import { createCollectionStore, isFilterInputActive, getSortByValue } from '@shopify/hydrogen';
+  const root = document.querySelector<HTMLElement>('[data-browse]');
+  if (root) {
+    const form = root.querySelector<HTMLFormElement>('[data-browse-form]')!;
+    const store = createCollectionStore({ data: { handle: root.dataset.handle!, dataSearch: root.dataset.search! } });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
+    const cancelDraft = () => { clearTimeout(timer); timer = undefined; };
+    function syncControls() {
+      const state = store.getState();
+      for (const input of form.querySelectorAll<HTMLInputElement>('[data-filter-input]')) input.checked = isFilterInputActive(state.filters, input.dataset.filterInput!);
+      form.querySelector<HTMLSelectElement>('select')!.value = state.sortKey ? getSortByValue(state.sortKey, state.reverse) : '';
+    }
+    async function navigate(url: URL, push: boolean, external = false) {
+      cancelDraft(); controller?.abort(); const current = new AbortController(); controller = current;
+      if (push) history.pushState(null, '', url);
+      store.syncFromParams(url.searchParams); syncControls();
+      if (external) {
+        const price = store.getState().filters.find((f) => f.price)?.price;
+        form.querySelector<HTMLInputElement>('[name="filter.v.price.gte"]')?.setAttribute('value', String(price?.min ?? ''));
+        const min = form.querySelector<HTMLInputElement>('[name="filter.v.price.gte"]'); if (min) min.value = String(price?.min ?? '');
+        const max = form.querySelector<HTMLInputElement>('[name="filter.v.price.lte"]'); if (max) max.value = String(price?.max ?? '');
+      }
+      root!.querySelector('[data-browse-results]')!.classList.add('opacity-50');
+      root!.querySelector('[data-browse-status]')!.textContent = 'Loading products…';
+      try {
+        const response = await fetch(url, { signal: current.signal }); if (!response.ok) throw new Error('Failed to load products');
+        const document = new DOMParser().parseFromString(await response.text(), 'text/html');
+        const results = document.querySelector('[data-browse-results]'); if (!results) throw new Error('Missing product results');
+        root!.querySelector('[data-browse-results]')!.replaceWith(results); store.settle();
+        window.dispatchEvent(new Event('nightshift:browse-view'));
+        root!.querySelector('[data-browse-status]')!.textContent = 'Products updated.';
+      } catch (error) {
+        if (current.signal.aborted) return;
+        store.settle(); root!.querySelector('[data-browse-results]')!.classList.remove('opacity-50');
+        root!.querySelector('[data-browse-status]')!.textContent = 'Could not update products. Reload to try again.';
+      }
+    }
+    store.setOnBrowseChange(() => {
+      const url = new URL(location.href);
+      for (const key of [...url.searchParams.keys()]) if (key.startsWith('filter.') || ['sort_by','before','after'].includes(key)) url.searchParams.delete(key);
+      for (const [key,value] of store.serializeToParams()) url.searchParams.append(key,value);
+      void navigate(url,true);
+    });
+    form.addEventListener('submit', (event) => { event.preventDefault(); cancelDraft(); store.handleFormSubmit(event); });
+    form.addEventListener('change', (event) => {
+      const input = event.target as HTMLInputElement;
+      if (input.type === 'number') { cancelDraft(); timer = setTimeout(() => form.requestSubmit(),350); }
+      else form.requestSubmit();
+    });
+    root.addEventListener('click', (event) => {
+      const mouse = event as MouseEvent;
+      if (mouse.button || mouse.metaKey || mouse.ctrlKey || mouse.shiftKey || mouse.altKey) return;
+      const link = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[data-filter-link]');
+      if (link) { event.preventDefault(); void navigate(new URL(link.href),true,true); }
+    });
+    addEventListener('popstate', () => void navigate(new URL(location.href),false,true));
+    addEventListener('pagehide', () => { cancelDraft(); controller?.abort(); });
+  }
+</script>

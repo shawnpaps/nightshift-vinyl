@@ -1,0 +1,8 @@
+---
+import StoreLayout from '../../layouts/StoreLayout.astro';
+import Browse from '../../components/Browse.astro';
+import { loadBrowse } from '../../lib/browse.server';
+const data = await loadBrowse(Astro.locals.storefront, Astro.url, Astro.params.handle!);
+if (!data) Astro.response.status = 404;
+---
+<StoreLayout title={`${data?.title ?? 'Collection not found'} · Nightshift Vinyl`}><h1 class="mb-4 text-4xl font-bold">{data?.title ?? 'Collection not found'}</h1>{data ? <><p class="mb-10">{data.description}</p><Browse data={data} /></> : <a href="/collections">Browse collections</a>}</StoreLayout>

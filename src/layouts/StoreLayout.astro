@@ -1,0 +1,29 @@
+---
+import '../styles/global.css';
+import { isDemoStore } from '../lib/shopify.server';
+import ShopifyRuntime from '../components/ShopifyRuntime.astro';
+import CartDrawer from '../components/CartDrawer';
+interface Props { title?: string; description?: string }
+const { title = 'Nightshift Vinyl', description = 'Find your next favorite at Nightshift Vinyl.' } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" /><meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title><meta name="description" content={description} />
+    <meta property="og:title" content={title} /><meta property="og:description" content={description} />
+    <ShopifyRuntime />
+  </head>
+  <body class="min-h-screen bg-ink text-cream">
+    <a class="sr-only focus:not-sr-only" href="#main">Skip to content</a>
+    {isDemoStore && <p class="bg-coal px-6 py-2 text-center text-sm">Demo catalog · Sample music merchandise · Checkout and customer login need a connected Shopify store.</p>}
+    <header class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 border-b border-smoke px-6 py-6">
+      <a class="text-xl font-bold tracking-tight text-amber" href="/">NIGHTSHIFT VINYL</a>
+      <nav aria-label="Main navigation" class="flex gap-6"><a href="/collections">Collections</a><a href="/search">Search</a><a href="/account">Account</a><a href="/cart" data-cart-trigger aria-controls="cart-drawer" aria-haspopup="dialog">Cart</a></nav>
+    </header>
+    <main id="main" class="mx-auto max-w-6xl px-6 py-12"><slot /></main>
+    <footer class="mx-auto max-w-6xl border-t border-smoke px-6 py-8 text-sm">Nightshift Vinyl · For the love of the music. <a class="ml-4 underline" href="/cart">View full cart</a></footer>
+    <CartDrawer demo={isDemoStore} client:load />
+  </body>
+</html>

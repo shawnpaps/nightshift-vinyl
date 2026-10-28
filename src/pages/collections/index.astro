@@ -1,0 +1,8 @@
+---
+import StoreLayout from '../../layouts/StoreLayout.astro';
+import { gql } from '@shopify/hydrogen';
+const { data, errors } = await Astro.locals.storefront.graphql(gql(`query Collections($after: String) { collections(first: 24, after: $after) { nodes { id title handle } pageInfo { hasNextPage endCursor } } }`),{ variables: { after: Astro.url.searchParams.get('after') } });
+if (errors || !data) throw new Error('Unable to load collections.');
+const next = new URL(Astro.url); next.searchParams.set('after', data.collections.pageInfo.endCursor ?? '');
+---
+<StoreLayout title="Collections · Nightshift Vinyl"><h1 class="mb-8 text-4xl font-bold">Collections</h1><div class="grid gap-4 sm:grid-cols-2">{data.collections.nodes.map((collection) => <a class="rounded border border-smoke bg-coal p-6" href={`/collections/${collection.handle}`}>{collection.title} ↗</a>)}</div>{!data.collections.nodes.length && <p>Collections are coming soon.</p>}{data.collections.pageInfo.hasNextPage && <a href={next.pathname + next.search}>Next page →</a>}</StoreLayout>

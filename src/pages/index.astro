@@ -1,22 +1,46 @@
 ---
-import '../styles/global.css';
-
-const swatches = ['bg-ink', 'bg-coal', 'bg-smoke', 'bg-cream', 'bg-rust', 'bg-amber'];
+import StoreLayout from "../layouts/StoreLayout.astro";
+import ProductCard from "../components/ProductCard.astro";
+import { HOME_QUERY } from "../lib/catalog.server";
+const { data, errors } = await Astro.locals.storefront.graphql(HOME_QUERY);
+if (errors || !data) throw new Error("Unable to load Shopify catalog.");
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Nightshift Vinyl</title>
-	</head>
-	<body class="min-h-screen bg-ink p-8 text-cream">
-		<h1 class="text-3xl font-bold text-amber">Nightshift Vinyl</h1>
-		<div class="mt-6 flex">
-			{swatches.map((s) => <div class:list={[s, 'h-24 flex-1']} />)}
-		</div>
-	</body>
-</html>
+<StoreLayout>
+  <section class="mb-16">
+    <p class="mb-3 text-sm uppercase tracking-widest text-amber">
+      Nightshift Vinyl
+    </p>
+    <h1 class="max-w-2xl text-5xl font-bold">Stay up. Find something good.</h1>
+    <p class="mt-5 max-w-xl">
+      Explore the collection and find your next favorite.
+    </p>
+  </section>
+  <section aria-labelledby="collections" class="mb-16">
+    <h2 id="collections" class="mb-6 text-2xl font-bold">
+      Browse collections
+    </h2>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {data.collections.nodes.map((collection) => (
+        <a
+          class="rounded border border-smoke bg-coal p-6 hover:border-amber"
+          href={`/collections/${collection.handle}`}
+        >
+          {collection.title} <span aria-hidden="true">↗</span>
+        </a>
+      ))}
+    </div>
+    {!data.collections.nodes.length && <p>Collections are coming soon.</p>}
+  </section>
+  <section aria-labelledby="products">
+    <h2 id="products" class="mb-6 text-2xl font-bold">
+      On rotation
+    </h2>
+    <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+      {data.products.nodes.map((product) => (
+        <ProductCard product={product} />
+      ))}
+    </div>
+    {!data.products.nodes.length && <p>No products available yet.</p>}
+  </section>
+</StoreLayout>

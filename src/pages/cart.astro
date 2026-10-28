@@ -1,0 +1,9 @@
+---
+import StoreLayout from '../layouts/StoreLayout.astro';
+import Cart from '../components/Cart';
+import AnalyticsView from '../components/AnalyticsView.astro';
+import { toAnalyticsCart } from '../lib/analytics';
+import { cartHandlers, isDemoStore } from '../lib/shopify.server';
+const result = await cartHandlers.get({ storefrontClient: Astro.locals.storefront, request: Astro.request, sessionManager: Astro.locals.sessionManager, requestContext: Astro.locals.requestContext });
+---
+<StoreLayout title="Your cart · Nightshift Vinyl"><h1 class="mb-8 text-4xl font-bold">Your cart</h1><Cart initialData={result.data} demo={isDemoStore} client:load /><AnalyticsView event="cart_viewed" payload={{cart:result.data.cart ? toAnalyticsCart(result.data.cart) : null}} /></StoreLayout>

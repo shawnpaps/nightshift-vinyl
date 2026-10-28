@@ -1,0 +1,19 @@
+---
+import { getSelectedProductOptions } from '@shopify/hydrogen';
+import StoreLayout from '../../layouts/StoreLayout.astro';
+import ProductDetails from '../../components/ProductDetails';
+import AnalyticsView from '../../components/AnalyticsView.astro';
+import { PRODUCT_QUERY } from '../../lib/product.server';
+import { cartHandlers } from '../../lib/shopify.server';
+const { data, errors } = await Astro.locals.storefront.graphql(PRODUCT_QUERY,{ variables: { handle: Astro.params.handle!, selectedOptions: getSelectedProductOptions({searchParams:Astro.url.searchParams}) } });
+if (errors) { console.error('[hydrogen] Product query failed',errors); Astro.response.status = 500; }
+else if (!data?.product) Astro.response.status = 404;
+const product = !errors ? data?.product : undefined;
+const cart = product ? (await cartHandlers.get({ storefrontClient:Astro.locals.storefront, request:Astro.request, sessionManager:Astro.locals.sessionManager, requestContext:Astro.locals.requestContext })).data : {cart:null};
+const variant = product?.selectedOrFirstAvailableVariant;
+const jsonLd = product ? { '@context':'https://schema.org', '@type':'Product',name:product.title,description:product.description,sku:variant?.sku,offers:variant ? {'@type':'Offer',price:variant.price.amount,priceCurrency:variant.price.currencyCode,availability:`https://schema.org/${variant.availableForSale ? 'InStock' : 'OutOfStock'}`,url:Astro.url.href} : undefined } : undefined;
+---
+<StoreLayout title={`${product?.title ?? (errors ? 'Unable to load product' : 'Product not found')} · Nightshift Vinyl`} description={product?.description}>
+  {product ? <><ProductDetails product={product} initialData={cart} search={Astro.url.search} client:load /><script type="application/ld+json" set:html={JSON.stringify(jsonLd).replace(/</g,'\u003c')} /></> : <><h1 class="mb-6 text-4xl">{errors ? 'Unable to load product' : 'Product not found'}</h1><a href="/collections">Browse collections</a></>}
+  {product && variant && <AnalyticsView event="product_viewed" payload={{products:[{id:product.id,title:product.title,price:variant.price,vendor:product.vendor,variantId:variant.id,variantTitle:variant.title,quantity:1}]}} />}
+</StoreLayout>

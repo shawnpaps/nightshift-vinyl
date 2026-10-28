@@ -1,0 +1,17 @@
+---
+import type { AnalyticsEventName } from '@shopify/hydrogen';
+interface Props { event: AnalyticsEventName; payload: Record<string,unknown> }
+const { event, payload } = Astro.props;
+---
+<script type="application/json" data-analytics-view data-event={event} set:html={JSON.stringify(payload).replace(/</g,'\u003c')} />
+<script>
+  import type { AnalyticsEventName, AnalyticsEventMap } from '@shopify/hydrogen';
+  function publishView() {
+    const node = document.querySelector<HTMLScriptElement>('[data-analytics-view]');
+    if (!node || !window.Shopify?.analytics) return;
+    const event = node.dataset.event as AnalyticsEventName;
+    window.Shopify.analytics.publish(event,JSON.parse(node.textContent || '{}') as AnalyticsEventMap[typeof event]);
+  }
+  publishView();
+  addEventListener('nightshift:browse-view',publishView);
+</script>

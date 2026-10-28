@@ -1,0 +1,11 @@
+---
+import type { ProductCardData } from '../lib/catalog.server';
+import { formatPrice, shopifyImageUrl } from '../lib/presentation';
+interface Props { product: ProductCardData }
+const { product } = Astro.props;
+---
+<article><a href={`/products/${product.handle}`} class="group block">
+  {product.featuredImage ? <img class="mb-4 aspect-square w-full rounded bg-coal object-cover" src={shopifyImageUrl(product.featuredImage.url, 600)} srcset={`${shopifyImageUrl(product.featuredImage.url, 400)} 400w, ${shopifyImageUrl(product.featuredImage.url, 800)} 800w`} sizes="(min-width: 768px) 30vw, 90vw" width="600" height="600" loading="lazy" alt={product.featuredImage.altText ?? product.title} /> : <div class="mb-4 aspect-square bg-coal" />}
+  <h3 class="font-semibold group-hover:text-amber">{product.title}</h3>
+  <p class="mt-1 text-amber">{formatPrice(product.priceRange.minVariantPrice)}</p>
+</a></article>

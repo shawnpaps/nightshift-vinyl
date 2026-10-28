@@ -16,6 +16,11 @@ pnpm-debug.log*
 # environment variables
 .env
 .env.production
+.env.*.local
+.env.local
+.vercel/
+storefront-graphql-env.d.ts
+customer-account-graphql-env.d.ts
 
 # macOS-specific files
 .DS_Store

@@ -1,0 +1,24 @@
+---
+import StoreLayout from '../layouts/StoreLayout.astro';
+import { gql, createCustomerAccountClient } from '@shopify/hydrogen/customer-account';
+import { customerSession, shopifyConfig } from '../lib/shopify.server';
+const CUSTOMER = gql(`query CurrentCustomer { customer { firstName lastName emailAddress { emailAddress } } }`);
+const {sessionManager,requestContext} = Astro.locals;
+const loggedIn = customerSession ? await customerSession.isLoggedIn(sessionManager,requestContext) : false;
+let profile: { firstName?: string | null; lastName?: string | null; emailAddress?: { emailAddress: string | null } | null } | undefined;
+let failed = Astro.url.searchParams.get('login') === 'failed';
+if (loggedIn && customerSession) {
+  const accessToken = await customerSession.getAccessToken(sessionManager,requestContext);
+  if (!accessToken && !Astro.url.searchParams.has('refreshed')) return Astro.redirect('/account/refresh?return_to=%2Faccount%3Frefreshed%3D1');
+  if (accessToken) {
+    try {
+      const client = createCustomerAccountClient({shopId:shopifyConfig.shopId!,requestContext});
+      const result = await client.graphql(CUSTOMER,{accessToken});
+      if (result.errors) failed = true; else profile = result.data.customer;
+    } catch { failed = true; }
+  }
+}
+---
+<StoreLayout title="Your account · Nightshift Vinyl"><h1 class="mb-8 text-4xl font-bold">Your account</h1>
+  {!customerSession ? <p>Customer accounts will be available when the Shopify store is connected.</p> : profile ? <section><h2 class="mb-3 text-2xl">Welcome, {[profile.firstName,profile.lastName].filter(Boolean).join(' ') || 'music lover'}.</h2><p>{profile.emailAddress?.emailAddress}</p><form method="post" action="/account/logout" class="mt-6"><button class="border border-smoke px-6 py-3" type="submit">Log out</button></form></section> : <section>{failed && <p role="alert" class="mb-4">We couldn’t load your account. Please sign in again.</p>}<p class="mb-6">Sign in to your Shopify customer account.</p><a class="inline-block bg-amber px-6 py-3 font-semibold text-ink" href="/account/login?return_to=/account">Sign in</a></section>}
+</StoreLayout>
